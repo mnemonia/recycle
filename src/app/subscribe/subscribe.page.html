@@ -1,0 +1,151 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title><img src="assets/wertstoffe/recycle.svg" width="20px"></ion-title>
+    <ion-buttons slot="end">
+      <ion-chip class="indicator" *ngIf="subscription.total_saved_co2_per_year <= 0" color="danger"><ion-icon name="caret-up-outline"></ion-icon>&nbsp;{{subscription.total_saved_co2_per_year | number: '1.2-2'}} kg CO₂/a</ion-chip>
+      <ion-chip class="indicator" *ngIf="subscription.total_saved_co2_per_year > 0" color="success"><ion-icon name="caret-down-outline"></ion-icon>&nbsp;{{subscription.total_saved_co2_per_year | number: '1.2-2'}} kg CO₂/a</ion-chip>
+      <ion-button routerLink="/information"><ion-icon name="help-circle-outline"></ion-icon></ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-card class="ion-no-padding">
+    <ion-card-header>Sie sammeln. Wir verteilen.</ion-card-header>
+    <ion-card-content>Ihre Wertstoffe mit uns klimaneutral zum Recycling.</ion-card-content>
+  </ion-card>
+  <ion-list>
+    <ion-list-header>Wo abholen?</ion-list-header>
+    <ion-item>
+      <ion-searchbar clear-input="true"
+                     style="font-size: 0.7em"
+                     placeholder="Meinestrasse 7 8750 Glarus"
+                     (ionCancel)="removeLocations($event)"
+                     (ionChange)="findLocation($event)"
+                     (ionClear)="removeLocations($event)"
+                     (ionFocus)="setIs_in_search_edit_mode(true)"
+                     [value]="subscription.address_canonical"
+                     debounce="500"></ion-searchbar>
+      <ion-icon *ngIf="!subscription.is_address_identified" style="height: 0.7em" color="warning" slot="end" name="warning"></ion-icon>
+      <ion-icon *ngIf="subscription.is_address_identified" color="success" slot="end" name="checkmark-outline"></ion-icon>
+    </ion-item>
+  </ion-list>
+  <div *ngIf="locations.length > 0" class="search_container">
+    <div class="search_results">
+      <ion-list class="transparent_layer">
+        <ion-item
+                class="search_result"
+                color="light"
+                slot="end"
+                expand="block"
+                *ngFor="let loc of locations"
+                (click)="jumpToLocation(loc)">
+          <ion-icon *ngIf="loc.is_search_history" name="time-outline"></ion-icon>&nbsp;
+          <div
+                  [innerHTML]="loc.attrs.label"
+                  class="search_result_item"
+          ></div
+          ></ion-item>
+      </ion-list>
+    </div>
+  </div>
+  <ion-list>
+    <ion-list-header>Was abholen?</ion-list-header>
+    <ion-item>
+      <ion-row slot="end">
+        <ion-col size-xs="3" size-md="3"  *ngFor="let job of subscription.jobs" class="ion-text-nowrap">
+          <ion-avatar>
+            <img src="/assets/wertstoffe/{{job.image_name}}">
+          </ion-avatar>
+          <ion-label class="user-selection-label">{{job.description}}</ion-label>
+          <ion-checkbox (ionChange)="recalc()" [(ngModel)]="job.is_selected"></ion-checkbox>
+        </ion-col>
+      </ion-row>
+    </ion-item>
+    <!-- ion-item *ngFor="let job of subscription.jobs">
+      <ion-avatar>
+        <img src="/assets/wertstoffe/{{job.image_name}}">
+      </ion-avatar>
+      <ion-label>{{job.description}}</ion-label>
+      <ion-checkbox (ionChange)="recalc($event)"></ion-checkbox>
+    </ion-item -->
+  </ion-list>
+  <ion-list>
+    <ion-list-header>Wie viel abholen?</ion-list-header>
+    <ion-item>
+        <ion-col size="3" class="ion-text-nowrap"><ion-checkbox [checked]="subscription.estimated_weight_in_kg === 3" (click)="setWeight(3)"></ion-checkbox>&nbsp;0-3 kg</ion-col>
+        <ion-col size="3" class="ion-text-nowrap"><ion-checkbox [checked]="subscription.estimated_weight_in_kg === 10" (click)="setWeight(10)"></ion-checkbox>&nbsp;3-10 kg</ion-col>
+        <ion-col size="3" class="ion-text-nowrap"><ion-checkbox [checked]="subscription.estimated_weight_in_kg === 20" (click)="setWeight(20)"></ion-checkbox>&nbsp;10-20 kg</ion-col>
+        <ion-col size="3" class="ion-text-nowrap"><ion-checkbox [checked]="subscription.estimated_weight_in_kg === 50" (click)="setWeight(50)"></ion-checkbox>&nbsp;20-50 kg</ion-col>
+    </ion-item>
+  </ion-list>
+  <ion-list>
+    <ion-list-header>Wann abholen?</ion-list-header>
+    <ion-item>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weekday_number === 0" (click)="setWeekday(0)"></ion-checkbox>&nbsp;Mo</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weekday_number === 1" (click)="setWeekday(1)"></ion-checkbox>&nbsp;Di</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weekday_number === 2" (click)="setWeekday(2)"></ion-checkbox>&nbsp;Mi</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weekday_number === 3" (click)="setWeekday(3)"></ion-checkbox>&nbsp;Do</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weekday_number === 4" (click)="setWeekday(4)"></ion-checkbox>&nbsp;Fr</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weekday_number === 5" (click)="setWeekday(5)"></ion-checkbox>&nbsp;Sa</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weekday_number === 6" (click)="setWeekday(6)"></ion-checkbox>&nbsp;So</ion-col>
+    </ion-item>
+    <ion-item>
+        <ion-col class="ion-text-nowrap"><ion-checkbox [checked]="subscription.interval.repeat_dayhour_number === 9" (click)="setDayHour(9)"></ion-checkbox>&nbsp;7 - 9</ion-col>
+        <ion-col class="ion-text-nowrap"><ion-checkbox [checked]="subscription.interval.repeat_dayhour_number === 12" (click)="setDayHour(12)"></ion-checkbox>&nbsp;9 - 12</ion-col>
+        <ion-col class="ion-text-nowrap"><ion-checkbox [checked]="subscription.interval.repeat_dayhour_number === 13" (click)="setDayHour(13)"></ion-checkbox>&nbsp;12 - 13</ion-col>
+        <ion-col class="ion-text-nowrap"><ion-checkbox [checked]="subscription.interval.repeat_dayhour_number === 18" (click)="setDayHour(18)"></ion-checkbox>&nbsp;13 - 18</ion-col>
+        <ion-col class="ion-text-nowrap"><ion-checkbox [checked]="subscription.interval.repeat_dayhour_number === 20" (click)="setDayHour(20)"></ion-checkbox>&nbsp;18 - 20</ion-col>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Abhol-Intervall<p>In Wochen</p></ion-label>
+      <ion-row>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weeks === 1" (click)="setRepeatWeeks(1)"></ion-checkbox>&nbsp;1</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weeks === 2" (click)="setRepeatWeeks(2)"></ion-checkbox>&nbsp;2</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weeks === 3" (click)="setRepeatWeeks(3)"></ion-checkbox>&nbsp;3</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weeks === 4" (click)="setRepeatWeeks(4)"></ion-checkbox>&nbsp;4</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weeks === 5" (click)="setRepeatWeeks(5)"></ion-checkbox>&nbsp;5</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weeks === 6" (click)="setRepeatWeeks(6)"></ion-checkbox>&nbsp;6</ion-col>
+        <ion-col><ion-checkbox [checked]="subscription.interval.repeat_weeks === 8" (click)="setRepeatWeeks(8)"></ion-checkbox>&nbsp;8</ion-col>
+      </ion-row>
+    </ion-item>
+  </ion-list>
+  <ion-list *ngIf="places.length > 0">
+    <ion-list-header>Sammelstellen</ion-list-header>
+    <ion-item *ngFor="let place of places">
+      <ion-label class="ion-text-wrap">{{place.full_name}} {{place.city.zip}} {{place.city.name}}<p>CO₂ Reduktion {{place.co2_exhaust_in_kg | number: '1.2-2'}} kg pro Weg</p></ion-label>
+      <ion-text>{{place.distance_in_km | number: '1.2-2'}} km</ion-text>
+    </ion-item>
+  </ion-list>
+  <ion-list *ngIf="places.length > 0">
+    <ion-list-header>Einsparungen</ion-list-header>
+    <ion-item>
+      <ion-label>Reduktion CO₂<p>Pro Jahr</p></ion-label>
+      <ion-text>{{subscription.total_saved_co2_per_year | number: '1.2-2'}} kg</ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label>Reduktion Weg<p>Pro Jahr</p></ion-label>
+      <ion-text>{{subscription.total_saved_km_per_year | number: '1.2-2'}} km</ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label>Reduktion Ausgaben Benzin<p>Pro Jahr</p></ion-label>
+      <ion-text>{{subscription.total_saved_fuel_per_year_in_fr | number: '1.2-2'}} Fr</ion-text>
+    </ion-item>
+  </ion-list>
+  <ion-list>
+    <ion-list-header>Preis</ion-list-header>
+    <ion-item>
+      <ion-label>Abholen<p>Pro Monat</p></ion-label>
+      <ion-text>{{subscription.price_per_month.value}} Fr</ion-text>
+    </ion-item>
+  </ion-list>
+  <ion-list>
+    <ion-list-header>Anmelden</ion-list-header>
+    <ion-button expand="full"><ion-icon name="logo-instagram"></ion-icon>&nbsp;Login mit Instagram</ion-button>
+    <ion-button expand="full"><ion-icon name="logo-google"></ion-icon>&nbsp;Login mit Google</ion-button>
+    <ion-button expand="full"><ion-icon name="logo-facebook"></ion-icon>&nbsp;Login mit Facebook</ion-button>
+  </ion-list>
+</ion-content>

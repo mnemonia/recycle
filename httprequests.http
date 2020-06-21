@@ -1,0 +1,6 @@
+GET https://api3.geo.admin.ch/rest/services/all/MapServer/identify?geometry=2724934.75,1210416.25&geometryFormat=geojson&geometryType=esriGeometryPoint&lang=de&layers=all:ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill&limit=10&returnGeometry=false&sr=2056&tolerance=0
+
+###
+GET https://api3.geo.admin.ch/rest/services/all/MapServer/identify?geometry=2724934.75,1210416.25&geometryFormat=geojson&geometryType=esriGeometryPoint&lang=de&layers=all:ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill,ch.swisstopo-vd.ortschaftenverzeichnis_plz&limit=10&returnGeometry=false&sr=2056&tolerance=0
+
+###
