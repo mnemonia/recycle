@@ -1,11 +1,9 @@
 import {Component, OnInit} from '@angular/core';
 import {SubscriptionService} from '../services/subscribe/subscription.service';
-import {Location, Price, Subscription} from '../model/Subscription';
+import {Location, MaterialId, Price, Subscription} from '../model/Subscription';
 import {PaymentService} from '../services/payment/payment.service';
 import {GeoService} from '../services/geo/geo.service';
 import {RecyclingMapService} from '../services/recycling-map/recycling-map.service';
-import {filter, flatMap, map, switchMap, tap} from 'rxjs/operators';
-import {from} from 'rxjs';
 import {MathService} from '../services/math/math.service';
 
 @Component({
@@ -97,22 +95,27 @@ export class SubscribePage implements OnInit {
 
     private findSammelstellen() {
         const selectedJobs = this.subscription.jobs.filter(j => j.is_selected);
-        console.log('selectedJobs', selectedJobs);
         const sammelstellenStats = [];
         this.places = [];
         this.subscription.total_saved_km_per_year = 0;
         this.subscription.total_saved_co2_per_year = 0;
         this.subscription.total_saved_fuel_per_year_in_liter = 0;
         this.subscription.total_saved_fuel_per_year_in_fr = 0;
-
-
         this.recyclingMapService.findSammelstellen(this.subscription.plz4).subscribe(
             (sammelstellen) => {
                 selectedJobs.forEach(j => {
-                    const sammelstelleWithMaterialMatch =
-                        sammelstellen.filter(s => s.materials.filter(m => m.id === j.material_id.valueOf()).length > 0);
+                    let sammelstelleWithMaterialMatch = [];
+                    if (j.material_id === MaterialId.MIGROS_GENERATION_M) {
+                        sammelstelleWithMaterialMatch =
+                            sammelstellen.filter(s => s.full_name.indexOf('Migros') >= 0);
+                    } else if (j.material_id === MaterialId.SAMMELSACK_CH) {
+                        sammelstelleWithMaterialMatch =
+                            sammelstellen.filter(s => s.full_name.indexOf('Bowald') >= 0);
+                    } else {
+                        sammelstelleWithMaterialMatch =
+                            sammelstellen.filter(s => s.materials.filter(m => m.id === j.material_id.valueOf()).length > 0);
+                    }
                     j.sammelstellen = sammelstelleWithMaterialMatch;
-                    console.log('sammelstelleWithMaterialMatch', sammelstelleWithMaterialMatch);
                     j.sammelstellen.forEach(s => {
                         const stats = sammelstellenStats.filter(sm => sm.id === s.id);
                         if (stats.length === 0) {
@@ -122,7 +125,7 @@ export class SubscribePage implements OnInit {
                                 total_count: 1,
                                 material: {},
                                 materials: []};
-                            sts.material[j.material_id.valueOf()] = 1;
+                            sts.material[j.material_id] = 1;
                             sts.materials.push(j.material_id);
                             sammelstellenStats.push(sts);
                         } else {
@@ -136,19 +139,14 @@ export class SubscribePage implements OnInit {
                                 }
                             });
                         }
-                        console.log('stats 1', stats);
-                        console.log('sammelstellenStats', sammelstellenStats);
                     });
                 });
             },
             (err) => console.error(err),
             () => {
-                console.log('stats 2', sammelstellenStats);
                 // case one is found for all materials:
                 const size = selectedJobs.length;
-                console.log('size', size);
                 let allMatchingSammelstellen = sammelstellenStats.filter(s => s.total_count === size);
-                console.log('allMatchingSammelstellen', allMatchingSammelstellen);
                 allMatchingSammelstellen.forEach(s => this.places.push(s));
                 allMatchingSammelstellen.forEach(sts => {
                     const to_address = sts.sammelstelle.full_name + ', '
@@ -182,65 +180,6 @@ export class SubscribePage implements OnInit {
                 });
             }
         );
-        // this.places = [];
-        // this.subscription.total_saved_co2_per_year = 0;
-        // this.subscription.total_saved_fuel_per_year_in_liter = 0;
-        // const materialsMatcher = (materials: []) => {
-        //     const jbs = this.subscription.jobs.filter(j => j.is_selected)
-        //         .filter(j => materials.find((m: any) => m.id === j.material_id.valueOf()) !== undefined);
-        //     return jbs.length > 0;
-        // };
-        // this.recyclingMapService.findSammelstellen(this.subscription.plz4)
-        //     .pipe(switchMap((res: any[]) => from(res)),
-        //         filter(res => materialsMatcher(res.materials)))
-        //     .subscribe((res: any) => {
-        //             this.places.push(res);
-        //         },
-        //         (err) => console.error(err),
-        //         () => {
-        //             this.places.forEach(p => {
-        //                 this.recyclingMapService.calculateRoutes(p.full_name + ', ' + p.city.zip + ' ' + p.city.name,
-        //                     this.subscription.address_canonical)
-        //                     .subscribe(
-        //                         (route: any) => {
-        //                             p.distance_in_km = route.route.rawdistance / 1000;
-        //                             p.co2_exhaust_in_kg = p.distance_in_km * 0.185;
-        //                             p.match_count = 0;
-        //                         },
-        //                         (err) => {
-        //                             console.error('calculateRoutes', err);
-        //                         },
-        //                         () => {
-        //                             this.places = this.places.sort((a, b) => {
-        //                                 if (a.distance_in_km > b.distance_in_km) {
-        //                                     return 1;
-        //                                 }
-        //                                 if (a.distance_in_km < b.distance_in_km) {
-        //                                     return -1;
-        //                                 }
-        //                                 return 0;
-        //                             });
-        //                             if (this.places.length > 5) {
-        //                                 this.places = this.places.slice(0, 5);
-        //                             }
-        //                             if (this.places.length > 0) {
-        //                                 this.subscription.total_saved_km_per_year = (52 / 2) * 2 * this.places[0].distance_in_km;
-        //                                 this.subscription.total_saved_co2_per_year = (52 / 2) * 2 * this.places[0].co2_exhaust_in_kg;
-        //                                 this.subscription.total_saved_fuel_per_year_in_liter = this.subscription.total_saved_km_per_year * (8 / 100);
-        //                                 this.subscription.total_saved_fuel_per_year_in_fr = this.subscription.total_saved_fuel_per_year_in_liter * 1.38;
-        //                             }
-        //                         }
-        //                     );
-        //             });
-        //             // this.subscription.jobs.filter(j => j.is_selected).filter(j => j.material_id.valueOf() === 99).forEach(j => {
-        //             //   this.recyclingMapService.findSammelsackPlaces(this.subscription.plz4, this.subscription.gdekt).subscribe(
-        //             //       (res2: any) => {
-        //             //         this.places.push(res2.full_name);
-        //             //       }
-        //             //   );
-        //             // });
-        //         });
-
     }
 
     setWeight(weight) {
