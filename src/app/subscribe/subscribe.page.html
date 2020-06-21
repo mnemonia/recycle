@@ -115,9 +115,13 @@
   </ion-list>
   <ion-list *ngIf="places.length > 0">
     <ion-list-header>Sammelstellen</ion-list-header>
-    <ion-item *ngFor="let place of places">
-      <ion-label class="ion-text-wrap">{{place.full_name}} {{place.city.zip}} {{place.city.name}}<p>CO₂ Reduktion {{place.co2_exhaust_in_kg | number: '1.2-2'}} kg pro Weg</p></ion-label>
-      <ion-text>{{place.distance_in_km | number: '1.2-2'}} km</ion-text>
+    <ion-item *ngFor="let sammelstelleStats of places">
+      <ion-label class="ion-text-wrap">{{sammelstelleStats.sammelstelle.full_name}} {{sammelstelleStats.sammelstelle.city.zip}} {{sammelstelleStats.sammelstelle.city.name}}<p>CO₂ Reduktion {{sammelstelleStats.sammelstelle.co2_exhaust_in_kg | number: '1.2-2'}} kg pro Weg</p></ion-label>
+      <ion-text slot="end">{{sammelstelleStats.sammelstelle.distance_in_km | number: '1.2-2'}} km<p>
+        <ng-container *ngFor="let m of sammelstelleStats.materials">
+          <img height="20px" src="/assets/wertstoffe/{{m}}.svg">
+        </ng-container>
+      </p></ion-text>
     </ion-item>
   </ion-list>
   <ion-list *ngIf="places.length > 0">

@@ -11,7 +11,7 @@ export class RecyclingMapService {
 
   constructor(private httpClient: HttpClient) { }
 
-  public findPlaces(plz4): Observable<Sammelstelle[]> {
+  public findSammelstellen(plz4): Observable<Sammelstelle[]> {
     if (plz4.trim() === '') {
       return of([]);
     }
