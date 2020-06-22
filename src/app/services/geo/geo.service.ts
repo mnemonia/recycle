@@ -12,7 +12,7 @@ export class GeoService {
   constructor(private httpClient: HttpClient) { }
 
   public findLocation(query: string): Observable<any> {
-    const url = '//api3.geo.admin.ch/rest/services/api/SearchServer?lang=de&searchText=' + query + '&origins=address&type=locations&limit=5&sr=2056';
+    const url = '//api3.geo.admin.ch/rest/services/api/SearchServer?lang=de&searchText=' + query + '%20GL&origins=address&type=locations&limit=5&sr=2056';
     return this.httpClient.get(url).pipe(
         //tap(res => console.log(res)),
         map((res: any) => res.results),

@@ -16,6 +16,7 @@ export class SubscribePage implements OnInit {
     price: Price;
     locations: Location[] = [];
     places: any[];
+    places_temp: any[];
     is_in_search_edit_mode = false;
 
     constructor(private subscriptionService: SubscriptionService,
@@ -27,6 +28,7 @@ export class SubscribePage implements OnInit {
 
     ngOnInit() {
         this.places = [];
+        this.places_temp = [];
         this.subscription = this.subscriptionService.create();
         this.recalc();
     }
@@ -58,6 +60,8 @@ export class SubscribePage implements OnInit {
     public removeLocations($event) {
         this.locations = [];
         this.places = [];
+        this.subscription.is_address_identified = false;
+        this.setIs_in_search_edit_mode(true);
     }
 
     public setIs_in_search_edit_mode(value: boolean) {
@@ -69,6 +73,7 @@ export class SubscribePage implements OnInit {
         this.setIs_in_search_edit_mode(false);
         this.locations = [];
         this.subscription.address_canonical = location.address_canonical;
+        //console.log('this.subscription.address_canonical', this.subscription.address_canonical);
         this.geoApi.identify(location).subscribe((res) => {
                 res.filter(r => r.layerBodId === 'ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill')
                     .forEach(r => {
@@ -95,8 +100,9 @@ export class SubscribePage implements OnInit {
 
     private findSammelstellen() {
         const selectedJobs = this.subscription.jobs.filter(j => j.is_selected);
-        const sammelstellenStats = [];
+        let sammelstellenStats = [];
         this.places = [];
+        this.places_temp = [];
         this.subscription.total_saved_km_per_year = 0;
         this.subscription.total_saved_co2_per_year = 0;
         this.subscription.total_saved_fuel_per_year_in_liter = 0;
@@ -108,9 +114,15 @@ export class SubscribePage implements OnInit {
                     if (j.material_id === MaterialId.MIGROS_GENERATION_M) {
                         sammelstelleWithMaterialMatch =
                             sammelstellen.filter(s => s.full_name.indexOf('Migros') >= 0);
+                        if (sammelstelleWithMaterialMatch.length === 0) {
+                            sammelstelleWithMaterialMatch.push(this.recyclingMapService.getMigrosGlarus());
+                        }
                     } else if (j.material_id === MaterialId.SAMMELSACK_CH) {
                         sammelstelleWithMaterialMatch =
                             sammelstellen.filter(s => s.full_name.indexOf('Bowald') >= 0);
+                        if (sammelstelleWithMaterialMatch.length === 0) {
+                            sammelstelleWithMaterialMatch.push(this.recyclingMapService.getSammelsackGlarus());
+                        }
                     } else {
                         sammelstelleWithMaterialMatch =
                             sammelstellen.filter(s => s.materials.filter(m => m.id === j.material_id.valueOf()).length > 0);
@@ -147,37 +159,106 @@ export class SubscribePage implements OnInit {
                 // case one is found for all materials:
                 const size = selectedJobs.length;
                 let allMatchingSammelstellen = sammelstellenStats.filter(s => s.total_count === size);
-                allMatchingSammelstellen.forEach(s => this.places.push(s));
-                allMatchingSammelstellen.forEach(sts => {
+                if (allMatchingSammelstellen.length > 0) {
+                    const sts = allMatchingSammelstellen[0];
+                    this.places.push(sts);
                     const to_address = sts.sammelstelle.full_name + ', '
                         + sts.sammelstelle.city.zip + ' ' + sts.sammelstelle.city.name;
                     this.recyclingMapService.calculateRoutes(to_address,
                         this.subscription.address_canonical).subscribe(
-                                            (route: any) => {
-                                                sts.sammelstelle.distance_in_km = route.route.rawdistance / 1000;
-                                                sts.sammelstelle.co2_exhaust_in_kg = sts.sammelstelle.distance_in_km * 0.185;
-                                                sts.sammelstelle.match_count = 0;
-                                            },
+                        (route: any) => {
+                            sts.sammelstelle.distance_in_km = route.route.rawdistance / 1000;
+                            sts.sammelstelle.co2_exhaust_in_kg = sts.sammelstelle.distance_in_km * 0.185;
+                            sts.sammelstelle.match_count = 0;
+                        },
                         (err) => {},
                         () => {
                             this.places = this.places.sort((a, b) => {
-                                                                if (a.sammelstelle.distance_in_km > b.sammelstelle.distance_in_km) {
-                                                                    return 1;
-                                                                }
-                                                                if (a.sammelstelle.distance_in_km < b.sammelstelle.distance_in_km) {
-                                                                    return -1;
-                                                                }
-                                                                return 0;
-                                                            });
+                                if (a.sammelstelle.distance_in_km > b.sammelstelle.distance_in_km) {
+                                    return 1;
+                                }
+                                if (a.sammelstelle.distance_in_km < b.sammelstelle.distance_in_km) {
+                                    return -1;
+                                }
+                                return 0;
+                            });
                             if (this.places.length > 0) {
-                                this.subscription.total_saved_km_per_year = (52 / this.subscription.interval.repeat_weeks) * 2 * this.places[0].sammelstelle.distance_in_km;
-                                this.subscription.total_saved_co2_per_year = (52 / this.subscription.interval.repeat_weeks) * 2 * this.places[0].sammelstelle.co2_exhaust_in_kg;
+                                this.subscription.total_saved_km_per_year = (52 / this.subscription.interval.repeat_weeks) * 2 * sts.sammelstelle.distance_in_km;
+                                this.subscription.total_saved_co2_per_year = (52 / this.subscription.interval.repeat_weeks) * 2 * sts.sammelstelle.co2_exhaust_in_kg;
                                 this.subscription.total_saved_fuel_per_year_in_liter = this.subscription.total_saved_km_per_year * (8 / 100);
                                 this.subscription.total_saved_fuel_per_year_in_fr = this.subscription.total_saved_fuel_per_year_in_liter * 1.38;
                             }
 
                         });
-                });
+                } else {
+                    sammelstellenStats.forEach(sts => {
+                        this.places_temp.push(sts);
+                        const to_address = sts.sammelstelle.full_name + ', '
+                            + sts.sammelstelle.city.zip + ' ' + sts.sammelstelle.city.name;
+                        this.recyclingMapService.calculateRoutes(to_address,
+                            this.subscription.address_canonical).subscribe(
+                            (route: any) => {
+                                sts.sammelstelle.distance_in_km = route.route.rawdistance / 1000;
+                                sts.sammelstelle.co2_exhaust_in_kg = sts.sammelstelle.distance_in_km * 0.185;
+                                sts.sammelstelle.match_count = 0;
+                            },
+                            (err) => {},
+                            () => {
+                                console.log('sammelstellenStats unsorted', sammelstellenStats);
+                                this.places_temp = sammelstellenStats.sort((a, b) => {
+                                    if (a.total_count < b.total_count) {
+                                        return 1;
+                                    }
+                                    if (a.total_count > b.total_count) {
+                                        return -1;
+                                    }
+                                    if (a.sammelstelle.distance_in_km > b.sammelstelle.distance_in_km) {
+                                        return 1;
+                                    }
+                                    if (a.sammelstelle.distance_in_km < b.sammelstelle.distance_in_km) {
+                                        return -1;
+                                    }
+                                    return 0;
+                                });
+                                const ms = [];
+                                const plx = [];
+                                for (let sts of this.places_temp) {
+                                    let hasAdded = false;
+                                    sts.materials.forEach(m => {
+                                        console.warn(ms.filter(mz => mz === m).length);
+                                        console.warn(ms);
+                                        if (ms.length === 0 || ms.filter(mz => mz === m).length === 0) {
+                                            ms.push(m);
+                                            hasAdded = true;
+                                        }
+                                    });
+                                    if (hasAdded) {
+                                        plx.push(sts);
+                                    }
+                                    if (ms.length >= selectedJobs.length) {
+                                        console.log(ms.length, selectedJobs.length);
+                                        break;
+                                    }
+                                }
+                                this.places_temp = plx;
+                                console.log('sammelstellenStats sorted', this.places_temp);
+                                this.subscription.total_saved_km_per_year = 0;
+                                this.subscription.total_saved_co2_per_year = 0;
+                                this.places_temp.forEach(sts2 => {
+                                    console.log('sammelstelle '+sts2.sammelstelle.full_name+' distance_in_km', sts2.sammelstelle.distance_in_km);
+                                    if (!isNaN(sts2.sammelstelle.distance_in_km)) {
+                                        console.log('this.subscription.total_saved_km_per_year', this.subscription.total_saved_km_per_year);
+                                        this.subscription.total_saved_km_per_year += (52 / this.subscription.interval.repeat_weeks) * 2 * sts2.sammelstelle.distance_in_km;
+                                        this.subscription.total_saved_co2_per_year += (52 / this.subscription.interval.repeat_weeks) * 2 * sts2.sammelstelle.co2_exhaust_in_kg;
+                                        this.subscription.total_saved_fuel_per_year_in_liter = this.subscription.total_saved_km_per_year * (8 / 100);
+                                        this.subscription.total_saved_fuel_per_year_in_fr = this.subscription.total_saved_fuel_per_year_in_liter * 1.38;
+                                    }
+                                });
+                                this.places = this.places_temp;
+                            }
+                        );
+                    });
+                }
             }
         );
     }

@@ -5,7 +5,7 @@
     </ion-buttons>
     <ion-title><img src="assets/wertstoffe/recycle.svg" width="20px"></ion-title>
     <ion-buttons slot="end">
-      <ion-chip class="indicator" *ngIf="subscription.total_saved_co2_per_year <= 0" color="danger"><ion-icon name="caret-up-outline"></ion-icon>&nbsp;{{subscription.total_saved_co2_per_year | number: '1.2-2'}} kg CO₂/a</ion-chip>
+      <ion-chip class="indicator" *ngIf="!subscription.total_saved_co2_per_year || subscription.total_saved_co2_per_year <= 0" color="medium"><ion-icon name="caret-up-outline"></ion-icon>&nbsp;0.00 kg CO₂/a</ion-chip>
       <ion-chip class="indicator" *ngIf="subscription.total_saved_co2_per_year > 0" color="success"><ion-icon name="caret-down-outline"></ion-icon>&nbsp;{{subscription.total_saved_co2_per_year | number: '1.2-2'}} kg CO₂/a</ion-chip>
       <ion-button routerLink="/information"><ion-icon name="help-circle-outline"></ion-icon></ion-button>
     </ion-buttons>
@@ -117,7 +117,7 @@
     <ion-list-header>Sammelstellen</ion-list-header>
     <ion-item *ngFor="let sammelstelleStats of places">
       <ion-label class="ion-text-wrap">{{sammelstelleStats.sammelstelle.full_name}} {{sammelstelleStats.sammelstelle.city.zip}} {{sammelstelleStats.sammelstelle.city.name}}<p>CO₂ Reduktion {{sammelstelleStats.sammelstelle.co2_exhaust_in_kg | number: '1.2-2'}} kg pro Weg</p></ion-label>
-      <ion-text slot="end">{{sammelstelleStats.sammelstelle.distance_in_km | number: '1.2-2'}} km<p>
+      <ion-text slot="end"><ion-spinner *ngIf="!sammelstelleStats.sammelstelle.distance_in_km"></ion-spinner>{{sammelstelleStats.sammelstelle.distance_in_km | number: '1.2-2'}} km<p>
         <ng-container *ngFor="let m of sammelstelleStats.materials">
           <img height="20px" src="/assets/wertstoffe/{{m}}.svg">
         </ng-container>
